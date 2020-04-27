@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e
+
+default_brightness=0.5
+step=0.05
+min_brightness=0.1
+max_brightness=1
+state_file=$HOME/.brightness
+
+old_brightness=""
+if [[ -f "$state_file" ]]; then
+    old_brightness=$(cat "$state_file" | grep -oP "([0-9]*(\.[0-9]+)?)")
+else
+    old_brightness=$default_brightness
+fi
+
+if [[ -z "$old_brightness" ]]; then
+    old_brightness=$default_brightness
+fi
+
+brightness=${1:-$default_brightness}
+if [[ "$brightness" == "up" ]]; then
+    brightness=$(echo "$old_brightness + $step" | bc -l)
+elif [[ "$brightness" == "down" ]]; then
+    brightness=$(echo "$old_brightness - $step" | bc -l)
+fi
+
+if (( $(echo "$brightness > $max_brightness" | bc -l) )); then
+    brightness=$max_brightness
+elif (( $(echo "$brightness < $min_brightness" | bc -l) )); then
+    brightness=$min_brightness
+fi
+
+echo $brightness > $state_file
+
+DISPLAYS=(
+    "HDMI-0"
+    "DP-1"
+)
+
+for display in "${DISPLAYS[@]}"; do
+    xrandr --output $display --brightness $brightness
+done
+
+exit 0
